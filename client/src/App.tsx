@@ -21,6 +21,9 @@ import BottomNavigation from "@/components/BottomNavigation";
 import { AuthProvider, useAuth } from "@/hooks/use-auth";
 import { ProtectedRoute } from "@/lib/protected-route";
 
+// Theme
+import { ThemeProvider } from "@/hooks/useTheme";
+
 function Router() {
   return (
     <Switch>
@@ -63,10 +66,12 @@ function AppContent() {
 function App() {
   return (
     <QueryClientProvider client={queryClient}>
-      <AuthProvider>
-        <AppContent />
-        <Toaster />
-      </AuthProvider>
+      <ThemeProvider>
+        <AuthProvider>
+          <AppContent />
+          <Toaster />
+        </AuthProvider>
+      </ThemeProvider>
     </QueryClientProvider>
   );
 }

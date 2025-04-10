@@ -7,6 +7,8 @@ import { Label } from "@/components/ui/label";
 import { Settings } from "@/lib/types";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import AiProviderSettings from "./AiProviderSettings";
+import { ThemeSelector } from "./ThemeSelector";
+import { useTheme } from "@/hooks/useTheme";
 
 interface SettingsModalProps {
   userId: number;
@@ -88,11 +90,25 @@ const SettingsModal = ({ userId, onClose }: SettingsModalProps) => {
     }));
   };
 
+  const { theme, setTheme } = useTheme();
+  
+  // Update the theme when localSettings theme changes
+  useEffect(() => {
+    if (localSettings.theme && localSettings.theme !== theme) {
+      setTheme(localSettings.theme as 'light' | 'dark' | 'system');
+    }
+  }, [localSettings.theme, setTheme, theme]);
+
   const handleSelectChange = (field: keyof Settings, value: string) => {
     setLocalSettings((prev) => ({
       ...prev,
       [field]: value,
     }));
+    
+    // Update theme immediately if that's the field being changed
+    if (field === 'theme') {
+      setTheme(value as 'light' | 'dark' | 'system');
+    }
   };
 
   const handleReset = () => {
