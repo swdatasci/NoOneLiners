@@ -20,7 +20,12 @@ import {
   AnswerSnapshot
 } from "@shared/schema";
 
+import session from "express-session";
+
 export interface IStorage {
+  // Session store for authentication
+  sessionStore: session.Store;
+  
   // User operations
   getUser(id: number): Promise<User | undefined>;
   getUserByUsername(username: string): Promise<User | undefined>;
@@ -90,6 +95,9 @@ export class MemStorage implements IStorage {
   private currentFeedbackId: number;
   private currentSettingsId: number;
   
+  // Session store for authentication
+  public sessionStore;
+  
   constructor() {
     this.users = new Map();
     this.categories = new Map();
@@ -108,6 +116,11 @@ export class MemStorage implements IStorage {
     this.currentVersionId = 1;
     this.currentFeedbackId = 1;
     this.currentSettingsId = 1;
+    
+    // Initialize memory store for session management
+    this.sessionStore = new MemoryStore({
+      checkPeriod: 86400000 // prune expired entries every 24h
+    });
     
     // No pre-initialized data for beta launch
   }
@@ -387,12 +400,15 @@ export class MemStorage implements IStorage {
   }
 }
 
-// Import db-related dependencies at the top level
+// Import dependencies
 import { db } from "./db";
-import { eq, and, desc } from "drizzle-orm";
+import { eq, and, desc, or } from "drizzle-orm";
 import connectPgSimple from "connect-pg-simple";
 import session from "express-session";
+import createMemoryStore from "memorystore";
 import { pool } from "./db";
+
+const MemoryStore = createMemoryStore(session);
 
 // Import schema tables so they're accessible in the class methods
 import {
