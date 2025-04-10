@@ -100,33 +100,7 @@ export class MemStorage implements IStorage {
     this.currentFeedbackId = 1;
     this.currentSettingsId = 1;
     
-    // Initialize with some generic questions
-    const genericQuestions = [
-      { id: this.currentQuestionId++, text: "What problem does this idea solve?", effectiveness: 5, isGeneric: true },
-      { id: this.currentQuestionId++, text: "Who is the target audience for this?", effectiveness: 5, isGeneric: true },
-      { id: this.currentQuestionId++, text: "What resources would be needed to implement this?", effectiveness: 4, isGeneric: true },
-      { id: this.currentQuestionId++, text: "What are the potential challenges or obstacles?", effectiveness: 4, isGeneric: true },
-      { id: this.currentQuestionId++, text: "How is this different from existing solutions?", effectiveness: 5, isGeneric: true },
-      { id: this.currentQuestionId++, text: "What's the timeline for implementation?", effectiveness: 3, isGeneric: true },
-      { id: this.currentQuestionId++, text: "What would success look like for this idea?", effectiveness: 4, isGeneric: true },
-      { id: this.currentQuestionId++, text: "What are the first steps to move this forward?", effectiveness: 4, isGeneric: true }
-    ];
-    
-    genericQuestions.forEach(q => {
-      this.questions.set(q.id, q as Question);
-    });
-    
-    // Initialize with some default categories
-    const defaultCategories = [
-      { id: this.currentCategoryId++, name: "Product Ideas", userId: null },
-      { id: this.currentCategoryId++, name: "Business", userId: null },
-      { id: this.currentCategoryId++, name: "Creative", userId: null },
-      { id: this.currentCategoryId++, name: "Personal", userId: null }
-    ];
-    
-    defaultCategories.forEach(c => {
-      this.categories.set(c.id, c as Category);
-    });
+    // No pre-initialized data for beta launch
   }
   
   // User methods
