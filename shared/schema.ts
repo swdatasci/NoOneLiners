@@ -124,6 +124,7 @@ export type AnswerSnapshot = {
 export const insertUserSchema = createInsertSchema(users).pick({
   username: true,
   password: true,
+  email: true,
 });
 
 export const insertCategorySchema = createInsertSchema(categories).pick({

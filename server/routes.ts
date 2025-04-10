@@ -16,10 +16,10 @@ import {
 import { fromZodError } from "zod-validation-error";
 
 export async function registerRoutes(app: Express): Promise<Server> {
-  const httpServer = createServer(app);
-  
-  // Initialize authentication
+  // Setup authentication and get the isAuthenticated middleware
   const { isAuthenticated } = setupAuth(app);
+  
+  const httpServer = createServer(app);
 
   // Helper function to validate request body
   function validateBody(schema: any, body: any) {
