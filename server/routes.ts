@@ -1,6 +1,7 @@
-import type { Express, Request, Response } from "express";
+import type { Express, Request, Response, NextFunction } from "express";
 import { createServer, type Server } from "http";
 import { storage } from "./storage";
+import { setupAuth } from "./auth";
 import {
   insertUserSchema,
   insertCategorySchema,
@@ -16,6 +17,9 @@ import { fromZodError } from "zod-validation-error";
 
 export async function registerRoutes(app: Express): Promise<Server> {
   const httpServer = createServer(app);
+  
+  // Initialize authentication
+  const { isAuthenticated } = setupAuth(app);
 
   // Helper function to validate request body
   function validateBody(schema: any, body: any) {
@@ -26,57 +30,14 @@ export async function registerRoutes(app: Express): Promise<Server> {
     return result.data;
   }
 
-  // Auth routes
-  app.post("/api/login", async (req: Request, res: Response) => {
+  // Auth routes are now handled by Passport in auth.ts
+
+  // Additional user route to check if username exists (for registration form)
+  app.get("/api/check-username/:username", async (req: Request, res: Response) => {
     try {
-      const { username, password } = req.body;
-      
-      if (!username || !password) {
-        return res.status(400).json({ message: "Username and password are required" });
-      }
-      
+      const { username } = req.params;
       const user = await storage.getUserByUsername(username);
-      
-      if (!user || user.password !== password) {
-        return res.status(401).json({ message: "Invalid username or password" });
-      }
-      
-      // In a real app, we would use sessions or JWT
-      return res.status(200).json({ 
-        id: user.id,
-        username: user.username 
-      });
-    } catch (error: any) {
-      return res.status(500).json({ message: error.message });
-    }
-  });
-  
-  app.post("/api/register", async (req: Request, res: Response) => {
-    try {
-      const userData = validateBody(insertUserSchema, req.body);
-      
-      const existingUser = await storage.getUserByUsername(userData.username);
-      if (existingUser) {
-        return res.status(409).json({ message: "Username already exists" });
-      }
-      
-      const user = await storage.createUser(userData);
-      
-      // Create default settings for the user
-      await storage.createSettings({
-        userId: user.id,
-        enableSelfLearning: true,
-        storeQuestionEffectiveness: true,
-        improveQuestionsBasedOnAnswers: true,
-        theme: "light",
-        language: "en",
-        version: "1.0.0"
-      });
-      
-      return res.status(201).json({ 
-        id: user.id,
-        username: user.username 
-      });
+      return res.status(200).json({ exists: !!user });
     } catch (error: any) {
       return res.status(500).json({ message: error.message });
     }

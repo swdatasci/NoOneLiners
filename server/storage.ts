@@ -1,26 +1,44 @@
-import {
-  User,
-  InsertUser,
-  Category,
-  InsertCategory,
-  Idea,
-  InsertIdea,
-  Question,
-  InsertQuestion,
-  Answer,
-  InsertAnswer,
-  IdeaVersion,
-  InsertIdeaVersion,
-  QuestionFeedback,
-  InsertQuestionFeedback,
-  Settings,
-  InsertSettings,
+// Import all dependencies at the top to prevent duplication errors
+import { db } from "./db";
+import { eq, and, desc, or } from "drizzle-orm";
+import session from "express-session";
+import connectPgSimple from "connect-pg-simple";
+import createMemoryStore from "memorystore";
+import { pool } from "./db";
+import { 
+  User, 
+  Category, 
+  Idea, 
+  Question, 
+  Answer, 
+  IdeaVersion, 
+  QuestionFeedback, 
+  Settings, 
   ApiConfig,
+  InsertUser,
+  InsertCategory,
+  InsertIdea,
+  InsertQuestion,
+  InsertAnswer,
+  InsertIdeaVersion,
+  InsertQuestionFeedback,
+  InsertSettings,
   InsertApiConfig,
-  AnswerSnapshot
+  AnswerSnapshot,
+  users,
+  categories,
+  ideas,
+  questions,
+  answers,
+  ideaVersions,
+  questionFeedback,
+  settings,
+  apiConfigs
 } from "@shared/schema";
 
-import session from "express-session";
+// Initialize stores for sessions
+const MemoryStore = createMemoryStore(session);
+const PostgresSessionStore = connectPgSimple(session);
 
 export interface IStorage {
   // Session store for authentication
@@ -85,6 +103,7 @@ export class MemStorage implements IStorage {
   private ideaVersions: Map<number, IdeaVersion>;
   private questionFeedback: Map<number, QuestionFeedback>;
   private settings: Map<number, Settings>;
+  private apiConfigs: Map<number, ApiConfig> = new Map();
   
   private currentUserId: number;
   private currentCategoryId: number;
@@ -94,9 +113,10 @@ export class MemStorage implements IStorage {
   private currentVersionId: number;
   private currentFeedbackId: number;
   private currentSettingsId: number;
+  private currentApiConfigId: number = 1;
   
   // Session store for authentication
-  public sessionStore;
+  public sessionStore: session.Store;
   
   constructor() {
     this.users = new Map();
@@ -144,9 +164,9 @@ export class MemStorage implements IStorage {
   }
   
   // Category methods
-  async getCategories(userId: number | null = null): Promise<Category[]> {
+  async getCategories(userId: number): Promise<Category[]> {
     const categories = Array.from(this.categories.values());
-    if (userId === null) {
+    if (userId === 0) {
       return categories.filter(c => c.userId === null);
     }
     return categories.filter(c => c.userId === userId || c.userId === null);
@@ -158,7 +178,12 @@ export class MemStorage implements IStorage {
   
   async createCategory(category: InsertCategory): Promise<Category> {
     const id = this.currentCategoryId++;
-    const newCategory: Category = { ...category, id };
+    // Ensure fields are not undefined
+    const newCategory: Category = { 
+      ...category, 
+      id,
+      userId: category.userId || null
+    };
     this.categories.set(id, newCategory);
     return newCategory;
   }
@@ -175,12 +200,16 @@ export class MemStorage implements IStorage {
   async createIdea(idea: InsertIdea): Promise<Idea> {
     const id = this.currentIdeaId++;
     const now = new Date();
+    // Ensure fields are not undefined
     const newIdea: Idea = {
       ...idea,
       id,
+      userId: idea.userId || null,
+      categoryId: idea.categoryId || null,
+      status: idea.status || "draft",
       createdAt: now,
       updatedAt: now,
-      mediaUrls: idea.mediaUrls || []
+      mediaUrls: idea.mediaUrls || null
     };
     this.ideas.set(id, newIdea);
     return newIdea;
@@ -226,7 +255,14 @@ export class MemStorage implements IStorage {
   
   async createQuestion(question: InsertQuestion): Promise<Question> {
     const id = this.currentQuestionId++;
-    const newQuestion: Question = { ...question, id };
+    // Ensure fields are not undefined
+    const newQuestion: Question = { 
+      ...question, 
+      id,
+      categoryId: question.categoryId || null,
+      effectiveness: question.effectiveness || null,
+      isGeneric: question.isGeneric || null
+    };
     this.questions.set(id, newQuestion);
     return newQuestion;
   }
@@ -253,9 +289,12 @@ export class MemStorage implements IStorage {
   
   async createAnswer(answer: InsertAnswer): Promise<Answer> {
     const id = this.currentAnswerId++;
+    // Ensure fields are not undefined
     const newAnswer: Answer = {
       ...answer,
       id,
+      ideaId: answer.ideaId || null,
+      questionId: answer.questionId || null,
       createdAt: new Date()
     };
     this.answers.set(id, newAnswer);
@@ -286,9 +325,12 @@ export class MemStorage implements IStorage {
   
   async createIdeaVersion(version: InsertIdeaVersion): Promise<IdeaVersion> {
     const id = this.currentVersionId++;
+    // Ensure fields are not undefined
     const newVersion: IdeaVersion = {
       ...version,
       id,
+      ideaId: version.ideaId || null,
+      answersSnapshot: version.answersSnapshot || null,
       createdAt: new Date()
     };
     this.ideaVersions.set(id, newVersion);
@@ -298,24 +340,29 @@ export class MemStorage implements IStorage {
   // Feedback methods
   async createQuestionFeedback(feedback: InsertQuestionFeedback): Promise<QuestionFeedback> {
     const id = this.currentFeedbackId++;
+    // Ensure fields are not undefined
     const newFeedback: QuestionFeedback = {
       ...feedback,
       id,
+      userId: feedback.userId || null,
+      questionId: feedback.questionId || null,
       createdAt: new Date()
     };
     this.questionFeedback.set(id, newFeedback);
     
     // Update question effectiveness based on feedback
-    const question = await this.getQuestionById(feedback.questionId);
-    if (question) {
-      const allFeedback = Array.from(this.questionFeedback.values())
-        .filter(fb => fb.questionId === feedback.questionId);
-      
-      const positiveCount = allFeedback.filter(fb => fb.helpful).length;
-      const totalCount = allFeedback.length;
-      
-      const newEffectiveness = Math.round((positiveCount / totalCount) * 5);
-      await this.updateQuestionEffectiveness(question.id, newEffectiveness);
+    if (feedback.questionId) {
+      const question = await this.getQuestionById(feedback.questionId);
+      if (question) {
+        const allFeedback = Array.from(this.questionFeedback.values())
+          .filter(fb => fb.questionId === feedback.questionId);
+        
+        const positiveCount = allFeedback.filter(fb => fb.helpful).length;
+        const totalCount = allFeedback.length;
+        
+        const newEffectiveness = Math.round((positiveCount / totalCount) * 5);
+        await this.updateQuestionEffectiveness(question.id, newEffectiveness);
+      }
     }
     
     return newFeedback;
@@ -328,9 +375,25 @@ export class MemStorage implements IStorage {
   
   async createSettings(settingsData: InsertSettings): Promise<Settings> {
     const id = this.currentSettingsId++;
+    // Ensure fields are not undefined
     const newSettings: Settings = {
       ...settingsData,
-      id
+      id,
+      userId: settingsData.userId || null,
+      enableSelfLearning: settingsData.enableSelfLearning || null,
+      storeQuestionEffectiveness: settingsData.storeQuestionEffectiveness || null,
+      improveQuestionsBasedOnAnswers: settingsData.improveQuestionsBasedOnAnswers || null,
+      theme: settingsData.theme || null,
+      language: settingsData.language || null,
+      version: settingsData.version || null,
+      openaiApiKey: settingsData.openaiApiKey || null,
+      openaiModel: settingsData.openaiModel || null,
+      geminiApiKey: settingsData.geminiApiKey || null,
+      geminiModel: settingsData.geminiModel || null,
+      mistralApiKey: settingsData.mistralApiKey || null,
+      mistralModel: settingsData.mistralModel || null,
+      anthropicApiKey: settingsData.anthropicApiKey || null,
+      anthropicModel: settingsData.anthropicModel || null
     };
     this.settings.set(id, newSettings);
     return newSettings;
@@ -353,25 +416,24 @@ export class MemStorage implements IStorage {
   }
 
   // API Configuration methods
-  private apiConfigs: Map<number, ApiConfig> = new Map();
-  private currentApiConfigId: number = 1;
-
   async getApiConfigs(): Promise<ApiConfig[]> {
     return Array.from(this.apiConfigs.values());
   }
 
   async getApiConfigByProvider(provider: string): Promise<ApiConfig | undefined> {
     return Array.from(this.apiConfigs.values()).find(
-      config => config.provider === provider && config.isActive
+      config => config.provider === provider && config.isActive === true
     );
   }
 
   async createApiConfig(config: InsertApiConfig): Promise<ApiConfig> {
     const id = this.currentApiConfigId++;
     const now = new Date();
+    // Ensure fields are not undefined
     const newConfig: ApiConfig = {
       ...config,
       id,
+      isActive: config.isActive !== undefined ? config.isActive : null,
       createdAt: now,
       updatedAt: now
     };
@@ -400,33 +462,8 @@ export class MemStorage implements IStorage {
   }
 }
 
-// Import dependencies
-import { db } from "./db";
-import { eq, and, desc, or } from "drizzle-orm";
-import connectPgSimple from "connect-pg-simple";
-import session from "express-session";
-import createMemoryStore from "memorystore";
-import { pool } from "./db";
-
-const MemoryStore = createMemoryStore(session);
-
-// Import schema tables so they're accessible in the class methods
-import {
-  users,
-  categories,
-  ideas,
-  questions,
-  answers,
-  ideaVersions,
-  questionFeedback,
-  settings,
-  apiConfigs
-} from "@shared/schema";
-
-const PostgresSessionStore = connectPgSimple(session);
-
 export class DatabaseStorage implements IStorage {
-  sessionStore;
+  sessionStore: session.Store;
 
   constructor() {
     this.sessionStore = new PostgresSessionStore({ 
@@ -453,8 +490,14 @@ export class DatabaseStorage implements IStorage {
 
   // Category methods
   async getCategories(userId: number): Promise<Category[]> {
+    if (userId === 0) {
+      return await db.select().from(categories).where(eq(categories.userId, null));
+    }
     return await db.select().from(categories).where(
-      userId ? eq(categories.userId, userId) : eq(categories.userId, null)
+      or(
+        eq(categories.userId, userId),
+        eq(categories.userId, null)
+      )
     );
   }
 
@@ -512,15 +555,15 @@ export class DatabaseStorage implements IStorage {
   }
 
   async getQuestionsByCategory(categoryId: number): Promise<Question[]> {
-    return await db
-      .select()
-      .from(questions)
-      .where(
-        // Return questions for the category or generic questions
-        categoryId
-          ? eq(questions.categoryId, categoryId) || eq(questions.isGeneric, true)
-          : eq(questions.isGeneric, true)
-      );
+    if (categoryId === 0) {
+      return await db.select().from(questions).where(eq(questions.isGeneric, true));
+    }
+    return await db.select().from(questions).where(
+      or(
+        eq(questions.categoryId, categoryId),
+        eq(questions.isGeneric, true)
+      )
+    );
   }
 
   async createQuestion(question: InsertQuestion): Promise<Question> {
@@ -581,17 +624,19 @@ export class DatabaseStorage implements IStorage {
       .returning();
     
     // Calculate new effectiveness based on all feedback
-    const allFeedback = await db
-      .select()
-      .from(questionFeedback)
-      .where(eq(questionFeedback.questionId, feedback.questionId));
-    
-    const positiveCount = allFeedback.filter(fb => fb.helpful).length;
-    const totalCount = allFeedback.length;
-    
-    if (totalCount > 0) {
-      const newEffectiveness = Math.round((positiveCount / totalCount) * 5);
-      await this.updateQuestionEffectiveness(feedback.questionId, newEffectiveness);
+    if (feedback.questionId) {
+      const allFeedback = await db
+        .select()
+        .from(questionFeedback)
+        .where(eq(questionFeedback.questionId, feedback.questionId));
+      
+      const positiveCount = allFeedback.filter(fb => fb.helpful).length;
+      const totalCount = allFeedback.length;
+      
+      if (totalCount > 0) {
+        const newEffectiveness = Math.round((positiveCount / totalCount) * 5);
+        await this.updateQuestionEffectiveness(feedback.questionId, newEffectiveness);
+      }
     }
     
     return newFeedback;
