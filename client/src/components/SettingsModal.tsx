@@ -192,17 +192,14 @@ const SettingsModal = ({ userId, onClose }: SettingsModalProps) => {
                             <label className="block text-sm font-medium text-gray-700 mb-1">
                               Theme
                             </label>
-                            <select
-                              className="mt-1 block w-full pl-3 pr-10 py-2 text-base border-gray-300 focus:outline-none focus:ring-primary-500 focus:border-primary-500 sm:text-sm rounded-md"
-                              value={localSettings.theme}
-                              onChange={(e) =>
-                                handleSelectChange("theme", e.target.value)
-                              }
-                            >
-                              <option value="light">Light</option>
-                              <option value="dark">Dark</option>
-                              <option value="system">System Default</option>
-                            </select>
+                            <div className="flex items-center space-x-4">
+                              <ThemeSelector />
+                              <div className="text-sm text-gray-500">
+                                {theme === 'light' && 'Light mode'}
+                                {theme === 'dark' && 'Dark mode'}
+                                {theme === 'system' && 'System preference'}
+                              </div>
+                            </div>
                           </div>
 
                           <div>
