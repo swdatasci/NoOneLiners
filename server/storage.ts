@@ -48,6 +48,7 @@ export interface IStorage {
   getUser(id: number): Promise<User | undefined>;
   getUserByUsername(username: string): Promise<User | undefined>;
   createUser(user: InsertUser): Promise<User>;
+  updateUserSubscription(userId: number, tier: string, expiresAt: Date | null): Promise<User>;
   
   // Category operations
   getCategories(userId: number): Promise<Category[]>;
@@ -158,14 +159,32 @@ export class MemStorage implements IStorage {
   
   async createUser(insertUser: InsertUser): Promise<User> {
     const id = this.currentUserId++;
-    // Ensure email is a string or null, not undefined
+    // Ensure fields are properly set with defaults
     const user: User = { 
       ...insertUser, 
       id,
-      email: insertUser.email || null 
+      email: insertUser.email || null,
+      subscriptionTier: insertUser.subscriptionTier || "free",
+      subscriptionExpiresAt: insertUser.subscriptionExpiresAt || null
     };
     this.users.set(id, user);
     return user;
+  }
+  
+  async updateUserSubscription(userId: number, tier: string, expiresAt: Date | null): Promise<User> {
+    const user = await this.getUser(userId);
+    if (!user) {
+      throw new Error(`User with ID ${userId} not found`);
+    }
+    
+    const updatedUser: User = {
+      ...user,
+      subscriptionTier: tier,
+      subscriptionExpiresAt: expiresAt
+    };
+    
+    this.users.set(userId, updatedUser);
+    return updatedUser;
   }
   
   // Category methods
@@ -489,8 +508,28 @@ export class DatabaseStorage implements IStorage {
   }
 
   async createUser(insertUser: InsertUser): Promise<User> {
-    const [user] = await db.insert(users).values(insertUser).returning();
+    // Ensure fields are properly set with defaults
+    const userData = {
+      ...insertUser,
+      subscriptionTier: insertUser.subscriptionTier || "free",
+      subscriptionExpiresAt: insertUser.subscriptionExpiresAt || null
+    };
+    
+    const [user] = await db.insert(users).values(userData).returning();
     return user;
+  }
+  
+  async updateUserSubscription(userId: number, tier: string, expiresAt: Date | null): Promise<User> {
+    const [updatedUser] = await db
+      .update(users)
+      .set({ 
+        subscriptionTier: tier, 
+        subscriptionExpiresAt: expiresAt 
+      })
+      .where(eq(users.id, userId))
+      .returning();
+      
+    return updatedUser;
   }
 
   // Category methods

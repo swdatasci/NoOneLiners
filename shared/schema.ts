@@ -7,6 +7,8 @@ export const users = pgTable("users", {
   username: text("username").notNull().unique(),
   password: text("password").notNull(),
   email: text("email").default(""),
+  subscriptionTier: text("subscription_tier").default("free"),
+  subscriptionExpiresAt: timestamp("subscription_expires_at"),
 });
 
 export const categories = pgTable("categories", {
@@ -84,6 +86,11 @@ export const settings = pgTable("settings", {
   geminiModel: text("gemini_model").default("gemini-pro"),
   mistralModel: text("mistral_model").default("mistral-large"),
   anthropicModel: text("anthropic_model").default("claude-3-opus"),
+  // Premium features
+  useAdvancedQuestionGeneration: boolean("use_advanced_question_generation").default(false),
+  useRecommendationEngine: boolean("use_recommendation_engine").default(false),
+  useOcrForImages: boolean("use_ocr_for_images").default(false),
+  useVoiceToText: boolean("use_voice_to_text").default(false),
 });
 
 // Types
@@ -125,6 +132,8 @@ export const insertUserSchema = createInsertSchema(users).pick({
   username: true,
   password: true,
   email: true,
+  subscriptionTier: true,
+  subscriptionExpiresAt: true,
 });
 
 export const insertCategorySchema = createInsertSchema(categories).pick({
