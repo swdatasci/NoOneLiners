@@ -1,30 +1,58 @@
 import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
+import { useAuth } from "@/hooks/use-auth";
 import SettingsModal from "@/components/SettingsModal";
+import { Loader2 } from "lucide-react";
 
 const Settings = () => {
   const [showModal, setShowModal] = useState(true);
   
-  // Get user ID (in a real app, this would come from auth context)
-  const userId = 1;
+  // Get user from auth context
+  const { user, isLoading: isLoadingUser } = useAuth();
   
   // Get current settings
-  const { data: settings, isLoading } = useQuery({
-    queryKey: [`/api/settings/${userId}`],
+  const { data: settings, isLoading: isLoadingSettings } = useQuery({
+    queryKey: user ? [`/api/settings/${user.id}`] : ['no-user'],
+    enabled: !!user,
   });
 
+  // Import necessary components
+  const [, setLocation] = useLocation();
+  
   // This page just shows settings in a modal directly
   // When modal is closed, it redirects back to home
   const handleCloseModal = () => {
     setShowModal(false);
-    // Redirect to home
-    window.location.href = "/";
+    // Redirect to home using wouter
+    setLocation("/");
   };
 
+  // Show loading state while user data is being fetched
+  if (isLoadingUser) {
+    return (
+      <div className="flex justify-center items-center min-h-[60vh]">
+        <Loader2 className="w-8 h-8 animate-spin text-primary" />
+      </div>
+    );
+  }
+  
+  // If no user is found, they should be redirected to auth page automatically
+  if (!user) {
+    return (
+      <div className="px-4 sm:px-6 lg:px-8 py-6">
+        <div className="text-center py-12 bg-white rounded-lg border border-gray-200">
+          <h3 className="text-lg font-medium text-gray-900 mb-2">
+            You must be logged in to access settings
+          </h3>
+        </div>
+      </div>
+    );
+  }
+  
   return (
     <div className="px-4 sm:px-6 lg:px-8 py-6">
       {/* Settings content - Modal is shown by default */}
-      {showModal && <SettingsModal userId={userId} onClose={handleCloseModal} />}
+      {showModal && <SettingsModal userId={user.id} onClose={handleCloseModal} />}
       
       {/* Fallback content in case modal is dismissed */}
       <div className="flex justify-between items-center mb-6">
