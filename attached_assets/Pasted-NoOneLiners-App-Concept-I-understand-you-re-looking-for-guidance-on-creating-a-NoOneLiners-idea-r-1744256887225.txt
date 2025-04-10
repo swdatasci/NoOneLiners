@@ -1,0 +1,42 @@
+NoOneLiners App Concept
+I understand you're looking for guidance on creating a "NoOneLiners" idea recording app with a self-evolving system. Here's how I would structure the prompt and rules for this app:
+
+App Prompt
+"Create a mobile app called 'NoOneLiners' that helps users capture and develop their ideas beyond simple one-line descriptions. The app should:
+
+Allow users to record ideas through text, audio, and image inputs
+Automatically generate probing questions based on initial idea input to help users expand their thoughts
+Guide users to document assumptions, context, and details they might otherwise forget
+Organize expanded ideas in a searchable and categorizable format
+Implement a feedback loop where user interactions improve question generation
+Build using microservices architecture for maintainability and scalability
+The app should function as a digital idea journal that actively helps users convert fleeting thoughts into fully documented concepts."
+
+Rules System (Separately)
+"The NoOneLiners app should operate on the following rule system:
+
+Idea Capture Rules:
+Accept any input format (text, voice recording, image) as the starting point
+Immediately prompt for a title or main concept if not provided
+Never allow an idea to remain as just a single sentence
+Question Generation Rules:
+Analyze idea input for key concepts, entities, and implied relationships
+Generate contextual questions based on the 5W1H framework (who, what, when, where, why, how)
+Prioritize questions about assumptions the user might be making
+Include questions about practical implementation aspects
+Ask for examples, use cases, or analogies to similar concepts
+Adapt questioning based on idea category (product, service, creative work, etc.)
+Learning System Rules:
+Track which questions lead to substantive expansions of ideas
+Monitor idea abandonment patterns to identify ineffective questioning
+Learn user-specific patterns for more personalized prompting
+Regularly update question templates based on aggregated user feedback
+Allow users to explicitly rate the helpfulness of questions
+Microservices Structure Rules:
+Maintain separate services for: user management, idea storage, question generation, ML feedback loops, and content analysis
+Implement event-driven communication between services
+Store all training data and user feedback for system improvement
+Enable automated testing for each microservice
+Implement a CI/CD pipeline for continuous improvement deployments
+Ensure all services can be updated independently"
+I recommend starting with the app prompt first to establish the general concept and getting approval on that, then following up with the rules system which provides the technical specifications and implementation details.
