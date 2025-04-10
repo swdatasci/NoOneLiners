@@ -9,7 +9,8 @@ import {
   insertQuestionSchema,
   insertQuestionFeedbackSchema,
   insertSettingsSchema,
-  insertIdeaVersionSchema
+  insertIdeaVersionSchema,
+  insertApiConfigSchema
 } from "@shared/schema";
 import { fromZodError } from "zod-validation-error";
 

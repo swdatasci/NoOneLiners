@@ -107,6 +107,9 @@ export type InsertIdeaVersion = typeof ideaVersions.$inferInsert;
 export type QuestionFeedback = typeof questionFeedback.$inferSelect;
 export type InsertQuestionFeedback = typeof questionFeedback.$inferInsert;
 
+export type ApiConfig = typeof apiConfigs.$inferSelect;
+export type InsertApiConfig = typeof apiConfigs.$inferInsert;
+
 export type Settings = typeof settings.$inferSelect;
 export type InsertSettings = typeof settings.$inferInsert;
 
@@ -154,4 +157,10 @@ export const insertQuestionFeedbackSchema = createInsertSchema(questionFeedback)
 
 export const insertSettingsSchema = createInsertSchema(settings).omit({
   id: true,
+});
+
+export const insertApiConfigSchema = createInsertSchema(apiConfigs).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
 });

@@ -15,6 +15,8 @@ import {
   InsertQuestionFeedback,
   Settings,
   InsertSettings,
+  ApiConfig,
+  InsertApiConfig,
   AnswerSnapshot
 } from "@shared/schema";
 
@@ -60,6 +62,13 @@ export interface IStorage {
   getSettings(userId: number): Promise<Settings | undefined>;
   createSettings(settings: InsertSettings): Promise<Settings>;
   updateSettings(userId: number, settings: Partial<InsertSettings>): Promise<Settings>;
+  
+  // API Configuration operations
+  getApiConfigs(): Promise<ApiConfig[]>;
+  getApiConfigByProvider(provider: string): Promise<ApiConfig | undefined>;
+  createApiConfig(config: InsertApiConfig): Promise<ApiConfig>;
+  updateApiConfig(id: number, config: Partial<InsertApiConfig>): Promise<ApiConfig>;
+  deleteApiConfig(id: number): Promise<boolean>;
 }
 
 export class MemStorage implements IStorage {
@@ -329,6 +338,304 @@ export class MemStorage implements IStorage {
     this.settings.set(existingSettings.id, updatedSettings);
     return updatedSettings;
   }
+
+  // API Configuration methods
+  private apiConfigs: Map<number, ApiConfig> = new Map();
+  private currentApiConfigId: number = 1;
+
+  async getApiConfigs(): Promise<ApiConfig[]> {
+    return Array.from(this.apiConfigs.values());
+  }
+
+  async getApiConfigByProvider(provider: string): Promise<ApiConfig | undefined> {
+    return Array.from(this.apiConfigs.values()).find(
+      config => config.provider === provider && config.isActive
+    );
+  }
+
+  async createApiConfig(config: InsertApiConfig): Promise<ApiConfig> {
+    const id = this.currentApiConfigId++;
+    const now = new Date();
+    const newConfig: ApiConfig = {
+      ...config,
+      id,
+      createdAt: now,
+      updatedAt: now
+    };
+    this.apiConfigs.set(id, newConfig);
+    return newConfig;
+  }
+
+  async updateApiConfig(id: number, configUpdate: Partial<InsertApiConfig>): Promise<ApiConfig> {
+    const config = this.apiConfigs.get(id);
+    if (!config) {
+      throw new Error(`API Config with id ${id} not found`);
+    }
+    
+    const updatedConfig: ApiConfig = {
+      ...config,
+      ...configUpdate,
+      updatedAt: new Date()
+    };
+    
+    this.apiConfigs.set(id, updatedConfig);
+    return updatedConfig;
+  }
+
+  async deleteApiConfig(id: number): Promise<boolean> {
+    return this.apiConfigs.delete(id);
+  }
 }
 
-export const storage = new MemStorage();
+// Database Storage Implementation
+import { db } from "./db";
+import { eq, and, desc } from "drizzle-orm";
+import connectPg from "connect-pg-simple";
+import session from "express-session";
+import { pool } from "./db";
+
+const PostgresSessionStore = connectPg(session);
+
+export class DatabaseStorage implements IStorage {
+  sessionStore: session.SessionStore;
+
+  constructor() {
+    this.sessionStore = new PostgresSessionStore({ 
+      pool,
+      createTableIfMissing: true
+    });
+  }
+
+  // User methods
+  async getUser(id: number): Promise<User | undefined> {
+    const [user] = await db.select().from(users).where(eq(users.id, id));
+    return user;
+  }
+
+  async getUserByUsername(username: string): Promise<User | undefined> {
+    const [user] = await db.select().from(users).where(eq(users.username, username));
+    return user;
+  }
+
+  async createUser(insertUser: InsertUser): Promise<User> {
+    const [user] = await db.insert(users).values(insertUser).returning();
+    return user;
+  }
+
+  // Category methods
+  async getCategories(userId: number): Promise<Category[]> {
+    return await db.select().from(categories).where(
+      userId ? eq(categories.userId, userId) : eq(categories.userId, null)
+    );
+  }
+
+  async getCategoryById(id: number): Promise<Category | undefined> {
+    const [category] = await db.select().from(categories).where(eq(categories.id, id));
+    return category;
+  }
+
+  async createCategory(category: InsertCategory): Promise<Category> {
+    const [newCategory] = await db.insert(categories).values(category).returning();
+    return newCategory;
+  }
+
+  // Idea methods
+  async getIdeas(userId: number): Promise<Idea[]> {
+    return await db.select().from(ideas).where(eq(ideas.userId, userId));
+  }
+
+  async getIdeaById(id: number): Promise<Idea | undefined> {
+    const [idea] = await db.select().from(ideas).where(eq(ideas.id, id));
+    return idea;
+  }
+
+  async createIdea(idea: InsertIdea): Promise<Idea> {
+    const [newIdea] = await db.insert(ideas).values(idea).returning();
+    return newIdea;
+  }
+
+  async updateIdea(id: number, ideaUpdate: Partial<InsertIdea>): Promise<Idea> {
+    const [updatedIdea] = await db
+      .update(ideas)
+      .set({ ...ideaUpdate, updatedAt: new Date() })
+      .where(eq(ideas.id, id))
+      .returning();
+    return updatedIdea;
+  }
+
+  async deleteIdea(id: number): Promise<boolean> {
+    await db.delete(ideas).where(eq(ideas.id, id));
+    return true;
+  }
+
+  async getIdeasByCategory(categoryId: number): Promise<Idea[]> {
+    return await db.select().from(ideas).where(eq(ideas.categoryId, categoryId));
+  }
+
+  // Question methods
+  async getQuestions(): Promise<Question[]> {
+    return await db.select().from(questions);
+  }
+
+  async getQuestionById(id: number): Promise<Question | undefined> {
+    const [question] = await db.select().from(questions).where(eq(questions.id, id));
+    return question;
+  }
+
+  async getQuestionsByCategory(categoryId: number): Promise<Question[]> {
+    return await db
+      .select()
+      .from(questions)
+      .where(
+        // Return questions for the category or generic questions
+        categoryId
+          ? eq(questions.categoryId, categoryId) || eq(questions.isGeneric, true)
+          : eq(questions.isGeneric, true)
+      );
+  }
+
+  async createQuestion(question: InsertQuestion): Promise<Question> {
+    const [newQuestion] = await db.insert(questions).values(question).returning();
+    return newQuestion;
+  }
+
+  async updateQuestionEffectiveness(id: number, effectiveness: number): Promise<Question> {
+    const [updatedQuestion] = await db
+      .update(questions)
+      .set({ effectiveness })
+      .where(eq(questions.id, id))
+      .returning();
+    return updatedQuestion;
+  }
+
+  // Answer methods
+  async getAnswersByIdeaId(ideaId: number): Promise<Answer[]> {
+    return await db.select().from(answers).where(eq(answers.ideaId, ideaId));
+  }
+
+  async createAnswer(answer: InsertAnswer): Promise<Answer> {
+    const [newAnswer] = await db.insert(answers).values(answer).returning();
+    return newAnswer;
+  }
+
+  async updateAnswer(id: number, answerUpdate: Partial<InsertAnswer>): Promise<Answer> {
+    const [updatedAnswer] = await db
+      .update(answers)
+      .set(answerUpdate)
+      .where(eq(answers.id, id))
+      .returning();
+    return updatedAnswer;
+  }
+
+  // Version methods
+  async getVersionsByIdeaId(ideaId: number): Promise<IdeaVersion[]> {
+    return await db
+      .select()
+      .from(ideaVersions)
+      .where(eq(ideaVersions.ideaId, ideaId))
+      .orderBy(desc(ideaVersions.createdAt));
+  }
+
+  async createIdeaVersion(version: InsertIdeaVersion): Promise<IdeaVersion> {
+    const [newVersion] = await db
+      .insert(ideaVersions)
+      .values(version)
+      .returning();
+    return newVersion;
+  }
+
+  // Feedback methods
+  async createQuestionFeedback(feedback: InsertQuestionFeedback): Promise<QuestionFeedback> {
+    const [newFeedback] = await db
+      .insert(questionFeedback)
+      .values(feedback)
+      .returning();
+    
+    // Calculate new effectiveness based on all feedback
+    const allFeedback = await db
+      .select()
+      .from(questionFeedback)
+      .where(eq(questionFeedback.questionId, feedback.questionId));
+    
+    const positiveCount = allFeedback.filter(fb => fb.helpful).length;
+    const totalCount = allFeedback.length;
+    
+    if (totalCount > 0) {
+      const newEffectiveness = Math.round((positiveCount / totalCount) * 5);
+      await this.updateQuestionEffectiveness(feedback.questionId, newEffectiveness);
+    }
+    
+    return newFeedback;
+  }
+
+  // Settings methods
+  async getSettings(userId: number): Promise<Settings | undefined> {
+    const [setting] = await db
+      .select()
+      .from(settings)
+      .where(eq(settings.userId, userId));
+    return setting;
+  }
+
+  async createSettings(settingsData: InsertSettings): Promise<Settings> {
+    const [newSettings] = await db
+      .insert(settings)
+      .values(settingsData)
+      .returning();
+    return newSettings;
+  }
+
+  async updateSettings(userId: number, settingsUpdate: Partial<InsertSettings>): Promise<Settings> {
+    const [updatedSettings] = await db
+      .update(settings)
+      .set(settingsUpdate)
+      .where(eq(settings.userId, userId))
+      .returning();
+    return updatedSettings;
+  }
+
+  // API Configuration methods
+  async getApiConfigs(): Promise<ApiConfig[]> {
+    return await db.select().from(apiConfigs);
+  }
+
+  async getApiConfigByProvider(provider: string): Promise<ApiConfig | undefined> {
+    const [config] = await db
+      .select()
+      .from(apiConfigs)
+      .where(
+        and(
+          eq(apiConfigs.provider, provider),
+          eq(apiConfigs.isActive, true)
+        )
+      );
+    return config;
+  }
+
+  async createApiConfig(config: InsertApiConfig): Promise<ApiConfig> {
+    const [newConfig] = await db
+      .insert(apiConfigs)
+      .values(config)
+      .returning();
+    return newConfig;
+  }
+
+  async updateApiConfig(id: number, configUpdate: Partial<InsertApiConfig>): Promise<ApiConfig> {
+    const [updatedConfig] = await db
+      .update(apiConfigs)
+      .set({ ...configUpdate, updatedAt: new Date() })
+      .where(eq(apiConfigs.id, id))
+      .returning();
+    return updatedConfig;
+  }
+
+  async deleteApiConfig(id: number): Promise<boolean> {
+    await db.delete(apiConfigs).where(eq(apiConfigs.id, id));
+    return true;
+  }
+}
+
+// Use Database Storage for production
+export const storage = process.env.NODE_ENV === "production" 
+  ? new DatabaseStorage() 
+  : new MemStorage();
