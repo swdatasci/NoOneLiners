@@ -1,5 +1,6 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { useAiProviders, ProviderType } from "@/hooks/useAiProviders";
+import { useAuth } from "@/hooks/use-auth";
 import { useToast } from "@/hooks/use-toast";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -18,12 +19,13 @@ import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Loader2, CheckCircle2, XCircle } from "lucide-react";
 
 interface AiProviderSettingsProps {
-  userId: number;
+  userId?: number; // Make userId optional since we'll get it from auth context
   onClose?: () => void;
 }
 
 export default function AiProviderSettings({ userId, onClose }: AiProviderSettingsProps) {
   const { toast } = useToast();
+  const { user } = useAuth();
   const {
     apiConfigs,
     isLoading,
@@ -33,15 +35,38 @@ export default function AiProviderSettings({ userId, onClose }: AiProviderSettin
     testConnectionMutation,
     isProviderConfigured
   } = useAiProviders();
+  
+  // Get userId from props or auth context
+  const effectiveUserId = userId || user?.id;
 
   const [activeTab, setActiveTab] = useState<ProviderType>("openai");
   const [apiKey, setApiKey] = useState<string>("");
+
+  // Show warning if no user is available
+  useEffect(() => {
+    if (!effectiveUserId && !isLoading) {
+      toast({
+        title: "Authentication Required",
+        description: "You must be logged in to manage AI providers.",
+        variant: "destructive",
+      });
+    }
+  }, [effectiveUserId, isLoading, toast]);
 
   const handleSaveConfig = async () => {
     if (!apiKey.trim()) {
       toast({
         title: "API Key Required",
         description: "Please enter a valid API key",
+        variant: "destructive",
+      });
+      return;
+    }
+    
+    if (!effectiveUserId) {
+      toast({
+        title: "Authentication Required",
+        description: "You must be logged in to save API configurations.",
         variant: "destructive",
       });
       return;

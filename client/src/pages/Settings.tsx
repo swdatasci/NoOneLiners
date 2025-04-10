@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
+import { useLocation } from "wouter";
 import { useAuth } from "@/hooks/use-auth";
 import SettingsModal from "@/components/SettingsModal";
 import { Loader2 } from "lucide-react";
@@ -16,7 +17,6 @@ const Settings = () => {
     enabled: !!user,
   });
 
-  // Import necessary components
   const [, setLocation] = useLocation();
   
   // This page just shows settings in a modal directly
