@@ -1,6 +1,8 @@
 import { Link } from "wouter";
 import { cn } from "@/lib/utils";
 import { useLocation } from "wouter";
+import { useAuth } from "@/hooks/use-auth";
+import { Button } from "@/components/ui/button";
 
 type SidebarProps = {
   user: {
@@ -11,6 +13,7 @@ type SidebarProps = {
 
 const Sidebar = ({ user }: SidebarProps) => {
   const [location] = useLocation();
+  const { logoutMutation } = useAuth();
 
   const routes = [
     {
@@ -194,10 +197,35 @@ const Sidebar = ({ user }: SidebarProps) => {
               <div className="h-8 w-8 rounded-full bg-primary-100 flex items-center justify-center text-primary-700 font-semibold mr-3">
                 {user.username.charAt(0).toUpperCase()}
               </div>
-              <div>
+              <div className="flex-1">
                 <p className="text-sm font-medium">{user.username}</p>
-                <p className="text-xs text-gray-500">Premium Plan</p>
+                <p className="text-xs text-gray-500">Free Plan</p>
               </div>
+              <Button 
+                variant="ghost" 
+                size="sm" 
+                onClick={() => logoutMutation.mutate()}
+                disabled={logoutMutation.isPending}
+              >
+                {logoutMutation.isPending ? (
+                  <span className="animate-spin">⟳</span>
+                ) : (
+                  <svg
+                    xmlns="http://www.w3.org/2000/svg"
+                    className="h-5 w-5"
+                    fill="none"
+                    viewBox="0 0 24 24"
+                    stroke="currentColor"
+                  >
+                    <path
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      strokeWidth="2"
+                      d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1"
+                    />
+                  </svg>
+                )}
+              </Button>
             </div>
           </div>
         )}
