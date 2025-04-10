@@ -5,6 +5,8 @@ import { useToast } from "@/hooks/use-toast";
 import { Switch } from "@/components/ui/switch";
 import { Label } from "@/components/ui/label";
 import { Settings } from "@/lib/types";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import AiProviderSettings from "./AiProviderSettings";
 
 interface SettingsModalProps {
   userId: number;
@@ -157,119 +159,141 @@ const SettingsModal = ({ userId, onClose }: SettingsModalProps) => {
                   </div>
                 ) : (
                   <div className="mt-6 space-y-4">
-                    <h4 className="text-md font-medium text-gray-800">
-                      System Configuration
-                    </h4>
+                    <Tabs defaultValue="general" className="w-full">
+                      <TabsList className="grid w-full grid-cols-3">
+                        <TabsTrigger value="general">General</TabsTrigger>
+                        <TabsTrigger value="ai-providers">AI Providers</TabsTrigger>
+                        <TabsTrigger value="advanced">Advanced</TabsTrigger>
+                      </TabsList>
+                      
+                      <TabsContent value="general" className="space-y-4 mt-4">
+                        <h4 className="text-md font-medium text-gray-800">
+                          System Configuration
+                        </h4>
 
-                    <div className="grid grid-cols-2 gap-4">
-                      <div>
-                        <label className="block text-sm font-medium text-gray-700 mb-1">
-                          Theme
-                        </label>
-                        <select
-                          className="mt-1 block w-full pl-3 pr-10 py-2 text-base border-gray-300 focus:outline-none focus:ring-primary-500 focus:border-primary-500 sm:text-sm rounded-md"
-                          value={localSettings.theme}
-                          onChange={(e) =>
-                            handleSelectChange("theme", e.target.value)
-                          }
-                        >
-                          <option value="light">Light</option>
-                          <option value="dark">Dark</option>
-                          <option value="system">System Default</option>
-                        </select>
-                      </div>
+                        <div className="grid grid-cols-2 gap-4">
+                          <div>
+                            <label className="block text-sm font-medium text-gray-700 mb-1">
+                              Theme
+                            </label>
+                            <select
+                              className="mt-1 block w-full pl-3 pr-10 py-2 text-base border-gray-300 focus:outline-none focus:ring-primary-500 focus:border-primary-500 sm:text-sm rounded-md"
+                              value={localSettings.theme}
+                              onChange={(e) =>
+                                handleSelectChange("theme", e.target.value)
+                              }
+                            >
+                              <option value="light">Light</option>
+                              <option value="dark">Dark</option>
+                              <option value="system">System Default</option>
+                            </select>
+                          </div>
 
-                      <div>
-                        <label className="block text-sm font-medium text-gray-700 mb-1">
-                          Language
-                        </label>
-                        <select
-                          className="mt-1 block w-full pl-3 pr-10 py-2 text-base border-gray-300 focus:outline-none focus:ring-primary-500 focus:border-primary-500 sm:text-sm rounded-md"
-                          value={localSettings.language}
-                          onChange={(e) =>
-                            handleSelectChange("language", e.target.value)
-                          }
-                        >
-                          <option value="en">English</option>
-                          <option value="es">Spanish</option>
-                          <option value="fr">French</option>
-                          <option value="de">German</option>
-                        </select>
-                      </div>
-                    </div>
-
-                    <h4 className="text-md font-medium text-gray-800 pt-4">
-                      Self-Evolution Settings
-                    </h4>
-
-                    <div className="space-y-4">
-                      <div className="flex items-center justify-between">
-                        <Label htmlFor="self-learning" className="text-sm text-gray-700">Enable self-learning</Label>
-                        <Switch
-                          id="self-learning"
-                          checked={!!localSettings.enableSelfLearning}
-                          onCheckedChange={() =>
-                            handleBooleanChange("enableSelfLearning")
-                          }
-                        />
-                      </div>
-
-                      <div className="flex items-center justify-between">
-                        <Label htmlFor="store-effectiveness" className="text-sm text-gray-700">Store question effectiveness</Label>
-                        <Switch
-                          id="store-effectiveness"
-                          checked={!!localSettings.storeQuestionEffectiveness}
-                          onCheckedChange={() =>
-                            handleBooleanChange("storeQuestionEffectiveness")
-                          }
-                        />
-                      </div>
-
-                      <div className="flex items-center justify-between">
-                        <Label htmlFor="improve-questions" className="text-sm text-gray-700">Improve questions based on answers</Label>
-                        <Switch
-                          id="improve-questions"
-                          checked={!!localSettings.improveQuestionsBasedOnAnswers}
-                          onCheckedChange={() =>
-                            handleBooleanChange("improveQuestionsBasedOnAnswers")
-                          }
-                        />
-                      </div>
-                    </div>
-
-                    <h4 className="text-md font-medium text-gray-800 pt-4">
-                      Version Control
-                    </h4>
-
-                    <div className="space-y-3">
-                      <div>
-                        <label className="block text-sm font-medium text-gray-700 mb-1">
-                          Current Version
-                        </label>
-                        <div className="bg-gray-100 rounded-md px-3 py-2 text-sm text-gray-800">
-                          {localSettings.version} (Updated recently)
+                          <div>
+                            <label className="block text-sm font-medium text-gray-700 mb-1">
+                              Language
+                            </label>
+                            <select
+                              className="mt-1 block w-full pl-3 pr-10 py-2 text-base border-gray-300 focus:outline-none focus:ring-primary-500 focus:border-primary-500 sm:text-sm rounded-md"
+                              value={localSettings.language}
+                              onChange={(e) =>
+                                handleSelectChange("language", e.target.value)
+                              }
+                            >
+                              <option value="en">English</option>
+                              <option value="es">Spanish</option>
+                              <option value="fr">French</option>
+                              <option value="de">German</option>
+                            </select>
+                          </div>
                         </div>
-                      </div>
 
-                      <div className="pt-1">
-                        <button
-                          type="button"
-                          className="inline-flex items-center px-4 py-2 border border-gray-300 shadow-sm text-sm font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary-500"
-                        >
-                          Rollback to Previous Version
-                        </button>
-                      </div>
+                        <h4 className="text-md font-medium text-gray-800 pt-4">
+                          Self-Evolution Settings
+                        </h4>
 
-                      <div className="pt-1">
-                        <button
-                          type="button"
-                          className="inline-flex items-center px-4 py-2 border border-red-300 shadow-sm text-sm font-medium rounded-md text-red-700 bg-white hover:bg-red-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-red-500"
-                          onClick={handleReset}
-                        >
-                          Reset System (Full Reset)
-                        </button>
-                      </div>
-                    </div>
+                        <div className="space-y-4">
+                          <div className="flex items-center justify-between">
+                            <Label htmlFor="self-learning" className="text-sm text-gray-700">Enable self-learning</Label>
+                            <Switch
+                              id="self-learning"
+                              checked={!!localSettings.enableSelfLearning}
+                              onCheckedChange={() =>
+                                handleBooleanChange("enableSelfLearning")
+                              }
+                            />
+                          </div>
+
+                          <div className="flex items-center justify-between">
+                            <Label htmlFor="store-effectiveness" className="text-sm text-gray-700">Store question effectiveness</Label>
+                            <Switch
+                              id="store-effectiveness"
+                              checked={!!localSettings.storeQuestionEffectiveness}
+                              onCheckedChange={() =>
+                                handleBooleanChange("storeQuestionEffectiveness")
+                              }
+                            />
+                          </div>
+
+                          <div className="flex items-center justify-between">
+                            <Label htmlFor="improve-questions" className="text-sm text-gray-700">Improve questions based on answers</Label>
+                            <Switch
+                              id="improve-questions"
+                              checked={!!localSettings.improveQuestionsBasedOnAnswers}
+                              onCheckedChange={() =>
+                                handleBooleanChange("improveQuestionsBasedOnAnswers")
+                              }
+                            />
+                          </div>
+                        </div>
+                      </TabsContent>
+                      
+                      <TabsContent value="ai-providers" className="mt-4">
+                        <AiProviderSettings 
+                          userId={userId} 
+                          onClose={() => {}} 
+                        />
+                      </TabsContent>
+                      
+                      <TabsContent value="advanced" className="space-y-4 mt-4">
+                        <h4 className="text-md font-medium text-gray-800">
+                          Version Control
+                        </h4>
+
+                        <div className="space-y-3">
+                          <div>
+                            <label className="block text-sm font-medium text-gray-700 mb-1">
+                              Current Version
+                            </label>
+                            <div className="bg-gray-100 rounded-md px-3 py-2 text-sm text-gray-800">
+                              {localSettings.version} (Updated recently)
+                            </div>
+                          </div>
+
+                          <div className="pt-1">
+                            <button
+                              type="button"
+                              className="inline-flex items-center px-4 py-2 border border-gray-300 shadow-sm text-sm font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary-500"
+                            >
+                              Rollback to Previous Version
+                            </button>
+                          </div>
+
+                          <div className="pt-4">
+                            <h4 className="text-md font-medium text-gray-800 mb-2">
+                              System Reset
+                            </h4>
+                            <button
+                              type="button"
+                              className="inline-flex items-center px-4 py-2 border border-red-300 shadow-sm text-sm font-medium rounded-md text-red-700 bg-white hover:bg-red-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-red-500"
+                              onClick={handleReset}
+                            >
+                              Reset System (Full Reset)
+                            </button>
+                          </div>
+                        </div>
+                      </TabsContent>
+                    </Tabs>
                   </div>
                 )}
               </div>

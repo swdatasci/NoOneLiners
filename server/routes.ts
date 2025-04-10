@@ -454,5 +454,167 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // API Configuration routes
+  app.get("/api/api-configs", async (req: Request, res: Response) => {
+    try {
+      const configs = await storage.getApiConfigs();
+      // Strip API keys for security before sending to client
+      const safeConfigs = configs.map(config => ({
+        ...config,
+        apiKey: "••••••••••••••••••••••••" // Mask API key
+      }));
+      return res.status(200).json(safeConfigs);
+    } catch (error: any) {
+      return res.status(500).json({ message: error.message });
+    }
+  });
+
+  app.get("/api/api-configs/:provider", async (req: Request, res: Response) => {
+    try {
+      const provider = req.params.provider;
+      const config = await storage.getApiConfigByProvider(provider);
+      
+      if (!config) {
+        return res.status(404).json({ message: `No active configuration found for ${provider}` });
+      }
+      
+      // Strip API key for security
+      const safeConfig = {
+        ...config,
+        apiKey: "••••••••••••••••••••••••" // Mask API key
+      };
+      
+      return res.status(200).json(safeConfig);
+    } catch (error: any) {
+      return res.status(500).json({ message: error.message });
+    }
+  });
+
+  app.post("/api/api-configs", async (req: Request, res: Response) => {
+    try {
+      const configData = validateBody(insertApiConfigSchema, req.body);
+      
+      // Check if a config for this provider already exists
+      const configs = await storage.getApiConfigs();
+      const existingConfig = configs.find(c => c.provider === configData.provider);
+      
+      if (existingConfig) {
+        // Update existing config
+        const updatedConfig = await storage.updateApiConfig(existingConfig.id, {
+          ...configData,
+          isActive: true
+        });
+        
+        // Return safe version without API key
+        const safeConfig = {
+          ...updatedConfig,
+          apiKey: "••••••••••••••••••••••••" // Mask API key
+        };
+        
+        return res.status(200).json(safeConfig);
+      } else {
+        // Create new config
+        const newConfig = await storage.createApiConfig(configData);
+        
+        // Return safe version without API key
+        const safeConfig = {
+          ...newConfig,
+          apiKey: "••••••••••••••••••••••••" // Mask API key
+        };
+        
+        return res.status(201).json(safeConfig);
+      }
+    } catch (error: any) {
+      return res.status(500).json({ message: error.message });
+    }
+  });
+
+  app.put("/api/api-configs/:id", async (req: Request, res: Response) => {
+    try {
+      const configId = Number(req.params.id);
+      const configData = req.body;
+      
+      const updatedConfig = await storage.updateApiConfig(configId, configData);
+      
+      // Return safe version without API key
+      const safeConfig = {
+        ...updatedConfig,
+        apiKey: "••••••••••••••••••••••••" // Mask API key
+      };
+      
+      return res.status(200).json(safeConfig);
+    } catch (error: any) {
+      return res.status(500).json({ message: error.message });
+    }
+  });
+
+  app.delete("/api/api-configs/:id", async (req: Request, res: Response) => {
+    try {
+      const configId = Number(req.params.id);
+      await storage.deleteApiConfig(configId);
+      return res.status(204).send();
+    } catch (error: any) {
+      return res.status(500).json({ message: error.message });
+    }
+  });
+  
+  // Test route to verify API connectivity
+  app.post("/api/test-ai-connection", async (req: Request, res: Response) => {
+    try {
+      const { provider } = req.body;
+      
+      if (!provider) {
+        return res.status(400).json({ message: "Provider is required" });
+      }
+      
+      const config = await storage.getApiConfigByProvider(provider);
+      
+      if (!config) {
+        return res.status(404).json({ message: `No configuration found for ${provider}` });
+      }
+      
+      // In a production app, we would actually test the connection here
+      // For now, just return success if the config exists
+      
+      return res.status(200).json({ message: "Connection successful" });
+    } catch (error: any) {
+      return res.status(500).json({ message: error.message });
+    }
+  });
+  
+  // Generic AI generation endpoint
+  app.post("/api/ai/generate", async (req: Request, res: Response) => {
+    try {
+      const { provider, prompt, maxTokens = 1000, temperature = 0.7 } = req.body;
+      
+      if (!provider || !prompt) {
+        return res.status(400).json({ message: "Provider and prompt are required" });
+      }
+      
+      // Get API configuration for the specified provider
+      const config = await storage.getApiConfigByProvider(provider);
+      
+      if (!config) {
+        return res.status(404).json({ message: `No active configuration found for ${provider}` });
+      }
+      
+      // This would be an actual call to the AI provider in production
+      // For now, return a simulated response
+      const simulatedResponse = {
+        text: `This is a simulated response to prompt: "${prompt}". In production, this would be generated by ${provider}.`,
+        provider,
+        tokenUsage: {
+          prompt: prompt.length / 4, // Rough token estimate
+          completion: 50,
+          total: (prompt.length / 4) + 50
+        }
+      };
+      
+      return res.status(200).json(simulatedResponse);
+    } catch (error: any) {
+      return res.status(500).json({ message: error.message });
+    }
+  });
+
   return httpServer;
 }

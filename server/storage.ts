@@ -387,17 +387,30 @@ export class MemStorage implements IStorage {
   }
 }
 
-// Database Storage Implementation
+// Import db-related dependencies at the top level
 import { db } from "./db";
 import { eq, and, desc } from "drizzle-orm";
-import connectPg from "connect-pg-simple";
+import connectPgSimple from "connect-pg-simple";
 import session from "express-session";
 import { pool } from "./db";
 
-const PostgresSessionStore = connectPg(session);
+// Import schema tables so they're accessible in the class methods
+import {
+  users,
+  categories,
+  ideas,
+  questions,
+  answers,
+  ideaVersions,
+  questionFeedback,
+  settings,
+  apiConfigs
+} from "@shared/schema";
+
+const PostgresSessionStore = connectPgSimple(session);
 
 export class DatabaseStorage implements IStorage {
-  sessionStore: session.SessionStore;
+  sessionStore;
 
   constructor() {
     this.sessionStore = new PostgresSessionStore({ 
