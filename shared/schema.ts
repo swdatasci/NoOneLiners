@@ -59,6 +59,15 @@ export const questionFeedback = pgTable("question_feedback", {
   createdAt: timestamp("created_at").notNull().defaultNow(),
 });
 
+export const apiConfigs = pgTable("api_configs", {
+  id: serial("id").primaryKey(),
+  provider: text("provider").notNull(), // 'openai', 'gemini', 'mistral', 'anthropic'
+  apiKey: text("api_key").notNull(), 
+  isActive: boolean("is_active").default(true),
+  createdAt: timestamp("created_at").notNull().defaultNow(),
+  updatedAt: timestamp("updated_at").notNull().defaultNow(),
+});
+
 export const settings = pgTable("settings", {
   id: serial("id").primaryKey(),
   userId: integer("user_id").references(() => users.id).unique(),
@@ -68,6 +77,12 @@ export const settings = pgTable("settings", {
   theme: text("theme").default("light"),
   language: text("language").default("en"),
   version: text("version").default("1.0.0"),
+  // AI provider settings
+  preferredProvider: text("preferred_provider").default("openai"),
+  openaiModel: text("openai_model").default("gpt-4o"),
+  geminiModel: text("gemini_model").default("gemini-pro"),
+  mistralModel: text("mistral_model").default("mistral-large"),
+  anthropicModel: text("anthropic_model").default("claude-3-opus"),
 });
 
 // Types
